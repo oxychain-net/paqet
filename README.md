@@ -9,6 +9,28 @@
 >
 > This project is in **active development**. APIs, configuration formats, protocol specifications, and command-line interfaces may change without notice. Expect breaking changes between versions. Use with caution in production environments.
 
+---
+
+## 🚀 Quick Install (AutoDevOps)
+
+For the easiest installation experience on Linux servers, use our **AutoDevOps Installer**. This automated system handles:
+- Installing system prerequisites (Go, libpcap, etc.)
+- Optimizing Linux kernel for networking
+- Installing and configuring Paqet
+- Setting up systemd services and firewalls
+
+**One-Step Installation:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/oxychain-net/paqet-autodevops/main/install.sh | sudo bash
+```
+
+For more details on the installer, visit the [Paqet AutoDevOps Repository](https://github.com/oxychain-net/paqet-autodevops).
+
+---
+
+## Manual Installation
+
 This project serves as an example of low-level network programming in Go, demonstrating concepts like:
 
 - Raw packet crafting and injection with `gopacket`.
@@ -16,13 +38,13 @@ This project serves as an example of low-level network programming in Go, demons
 - Custom binary network protocols.
 - The security implications of operating below the standard OS firewall.
 
-## Use Cases and Motivation
+### Use Cases and Motivation
 
 `paqet` is designed for specific scenarios where standard VPN or SSH tunnels may be insufficient. Its primary use cases include bypassing firewalls that detect standard handshake protocols by using custom packet structures, network security research for penetration testing and data exfiltration, and evading kernel-level connection tracking for monitoring avoidance.
 
 While `paqet` includes built-in encryption via KCP, it is more complex to configure than general-purpose VPN solutions.
 
-## How It Works
+### How It Works
 
 `paqet` creates a transport channel using KCP over raw TCP packets, bypassing the OS's TCP/IP stack entirely. It captures packets using pcap and injects crafted TCP packets containing encrypted transport data, allowing it to bypass kernel-level connection tracking and evade firewalls.
 
@@ -35,9 +57,9 @@ The system operates in three layers: raw TCP packet injection, encrypted transpo
 
 KCP provides reliable, encrypted communication optimized for high-loss or unpredictable networks, using aggressive retransmission, forward error correction, and symmetric encryption with a shared secret key. It is especially well-suited for real-time applications and gaming where low latency are critical.
 
-## Getting Started
+### Getting Started (Manual)
 
-### Prerequisites
+#### Prerequisites
 
 - `libpcap` development libraries must be installed on both the client and server machines.
   - **Debian/Ubuntu:** `sudo apt-get install libpcap-dev`
@@ -45,13 +67,13 @@ KCP provides reliable, encrypted communication optimized for high-loss or unpred
   - **macOS:** Comes pre-installed with Xcode Command Line Tools. Install with `xcode-select --install`
   - **Windows:** Install Npcap. Download from [npcap.com](https://npcap.com/).
 
-### 1. Download a Release
+#### 1. Download a Release
 
 Download the pre-compiled binary for your client and server operating systems from the project's **Releases page**.
 
 You will also need the configuration files from the `example/` directory.
 
-### 2. Configure the Connection
+#### 2. Configure the Connection
 
 paqet uses a unified configuration approach with role-based settings. Copy and modify either:
 
@@ -66,7 +88,7 @@ You must correctly set the interfaces, IP addresses, MAC addresses, and ports.
 > - **Transport Security**: KCP requires identical keys on client/server.
 > - **Configuration**: See "Critical Configuration Points" section below for detailed security requirements
 
-#### Finding Your Network Details
+##### Finding Your Network Details
 
 You'll need to find your network interface name, local IP, and the MAC address of your network's gateway (router).
 
@@ -92,11 +114,11 @@ You'll need to find your network interface name, local IP, and the MAC address o
 2. **Find Interface device GUID:** Windows requires the Npcap device GUID. In PowerShell, run `Get-NetAdapter | Select-Object Name, InterfaceGuid`. Note the **Name** and **InterfaceGuid** of your active network interface, and format the GUID as `\Device\NPF_{GUID}`.
 3. **Find Gateway MAC Address:** Run: `arp -a <gateway_ip>`. Note the MAC address for the gateway.
 
-#### Client Configuration - SOCKS5 Proxy Mode
+##### Client Configuration - SOCKS5 Proxy Mode
 
 The client acts as a SOCKS5 proxy server, accepting connections from applications and dynamically forwarding them through the raw TCP packets to any destination.
 
-#### Example Client Configuration (`config.yaml`)
+##### Example Client Configuration (`config.yaml`)
 
 ```yaml
 # Role must be explicitly set
@@ -136,7 +158,7 @@ transport:
     key: "your-secret-key-here" # CHANGE ME: Secret key (must match server)
 ```
 
-#### Example Server Configuration (`config.yaml`)
+##### Example Server Configuration (`config.yaml`)
 
 ```yaml
 # Role must be explicitly set
@@ -165,7 +187,7 @@ transport:
     key: "your-secret-key-here" # CHANGE ME: Secret key (must match client)
 ```
 
-#### Critical Firewall Configuration
+##### Critical Firewall Configuration
 
 This application uses `pcap` to receive and inject packets at a low level, **bypassing traditional firewalls like `ufw` or `firewalld`**. However, the OS kernel will still see incoming packets for the connection port and, not knowing about the connection, will generate TCP `RST` (reset) packets. While your connection may appear to work initially, these kernel-generated RST packets can corrupt connection state in NAT devices and stateful firewalls, leading to connection instability, packet drops, and premature connection termination in complex network environments.
 
@@ -200,7 +222,7 @@ These rules ensure that only the application handles traffic for the connection 
 >
 > Do not use ports 80, 443, or any other standard ports, because iptables rules can also affect outgoing connections from the server. Choose non-standard ports (e.g., 9999, 8888, or other high-numbered ports) for your server configuration.
 
-### 3. Run `paqet`
+#### 3. Run `paqet`
 
 Make the downloaded binary executable (`chmod +x ./paqet_linux_amd64`). You will need root privileges to use raw sockets.
 
@@ -220,7 +242,7 @@ _Place your client configuration file in the same directory as the binary and ru
 sudo ./paqet_darwin_arm64 run -c config.yaml
 ```
 
-### 4. Test the Connection
+#### 4. Test the Connection
 
 Once the client and server are running, test the SOCKS5 proxy:
 
@@ -231,7 +253,7 @@ curl -v https://httpbin.org/ip --proxy socks5h://127.0.0.1:1080
 
 This request will be proxied over raw TCP packets to the server, and then forwarded according to the client mode configuration. The output should show your server's public IP address, confirming the connection is working.
 
-## Command-Line Usage
+### Command-Line Usage
 
 `paqet` is a multi-command application. The primary command is `run`, which starts the proxy, but several utility commands are included to help with configuration and debugging.
 
@@ -249,7 +271,7 @@ sudo ./paqet <command> [arguments]
 | `dump`    | A diagnostic tool similar to `tcpdump` that captures and decodes packets.        |
 | `version` | Prints the application's version information.                                    |
 
-## Configuration Reference
+### Configuration Reference
 
 paqet uses a unified YAML configuration that works for both clients and servers. The `role` field must be explicitly set to either `"client"` or `"server"`.
 
@@ -258,7 +280,7 @@ paqet uses a unified YAML configuration that works for both clients and servers.
 - [`example/client.yaml.example`](example/client.yaml.example) - Client configuration reference
 - [`example/server.yaml.example`](example/server.yaml.example) - Server configuration reference
 
-### Encryption Modes
+#### Encryption Modes
 
 The `transport.kcp.block` parameter determines the encryption method. There are two special modes to disable encryption:
 
@@ -268,7 +290,7 @@ No encryption is applied, but a protocol header is still present. The packet for
 **`null`** (Raw Data)
 No encryption and no protocol header, data is transmitted in raw form without any cryptographic framing. This offers the highest performance but is the least secure and most easily identified.
 
-### Critical Configuration Points
+#### Critical Configuration Points
 
 **Transport Security:** KCP requires identical keys on client/server (use `secret` command to generate).
 
@@ -276,7 +298,7 @@ No encryption and no protocol header, data is transmitted in raw form without an
 
 **TCP Flag Cycling:** The `network.tcp.local_flag` and `network.tcp.remote_flag` arrays cycle through flag combinations to vary traffic patterns. Common patterns: `["PA"]` (standard data), `["S"]` (connection setup), `["A"]` (acknowledgment).
 
-# Architecture & Security Model
+## Architecture & Security Model
 
 ### The `pcap` Approach and Firewall Bypass
 
@@ -320,13 +342,13 @@ A normal application uses the OS's TCP/IP stack. When a packet arrives, it trave
 
 This means a rule like `ufw deny <PORT>` will have no effect on the proxy's operation, as `paqet` receives and processes the packet before `ufw` can block it.
 
-## ⚠️ Security Warning
+### ⚠️ Security Warning
 
 This project is an exploration of low-level networking and carries significant security responsibilities. The KCP transport protocol provides encryption, authentication, and integrity using symmetric encryption with a shared secret key.
 
 Security depends entirely on proper key management. Use the `secret` command to generate a strong key that must remain identical on both client and server.
 
-## Troubleshooting
+### Troubleshooting
 
 1.  **Permission Denied:** Ensure you are running with `sudo`.
 2.  **Connection Times Out:**
@@ -338,7 +360,16 @@ Security depends entirely on proper key management. Use the `secret` command to 
     - **NAT/Port Configuration:** For servers, ensure `listen.addr` and `network.ipv4.addr` ports match. For clients, use port `0` in `network.ipv4.addr` for automatic port assignment to avoid conflicts.
 3.  **Use `ping` and `dump`:** Use `paqet ping -c config.yaml` to test the connection. Use `paqet dump -p <PORT>` on the server to see if packets are arriving.
 
-## Acknowledgments
+#### WSL Network Issues (Go Installation)
+
+If you encounter 404 errors when installing Go (especially `dl.google.com`), perform this sanity check:
+
+- `curl -I https://go.dev/dl/` (should be 200)
+- `curl -I https://dl.google.com/go/` (if 404/blocked, script will try fallback)
+- `curl -I https://storage.googleapis.com/golang/` (should be reachable)
+- `env | grep -i proxy` (check if proxy settings interfere)
+
+### Acknowledgments
 
 This work draws inspiration from the research and implementation in the [gfw_resist_tcp_proxy](https://github.com/GFW-knocker/gfw_resist_tcp_proxy) project by GFW-knocker, which explored the use of raw sockets to circumvent certain forms of network filtering. This project serves as a Go-based exploration of those concepts.
 
@@ -347,6 +378,6 @@ This work draws inspiration from the research and implementation in the [gfw_res
 - Uses [kcp-go](https://github.com/xtaci/kcp-go) for reliable transport with encryption
 - Uses [smux](https://github.com/xtaci/smux) for connection multiplexing
 
-## License
+### License
 
 This project is licensed under the MIT License. See the see [LICENSE](LICENSE) file for details.
